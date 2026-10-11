@@ -2,28 +2,31 @@
 
 A [NexCTF](https://github.com/NexCTF/NexCTF) plugin that checks answers by running Python: a code runner that tests players' programs against test cases, and a script checker that validates answers with a function you write. Every run happens in a throwaway [microsandbox](https://github.com/microsandbox/microsandbox) microVM, booted for the submission and removed right after.
 
+[![CI](https://github.com/NexCTF/nexctf-sandbox/actions/workflows/ci.yml/badge.svg)](https://github.com/NexCTF/nexctf-sandbox/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/nexctf-sandbox.svg)](https://pypi.org/project/nexctf-sandbox/)
 [![ty](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ty/main/assets/badge/v0.json)](https://github.com/astral-sh/ty)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Python 3.15](https://img.shields.io/badge/python-3.15-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## Requirements
+
+- NexCTF 0.12.x, see [Compatibility](#compatibility)
+- A Linux host with KVM: the NexCTF process that checks submissions needs read and write access to `/dev/kvm`
 
 ## Quick Start
 
-Add the plugin to NexCTF's `NEXCTF_PLUGINS` and restart it; NexCTF installs it from PyPI and applies its migrations:
+Add the plugin to NexCTF's `NEXCTF_PLUGINS` in its `.env`, along with the host's `kvm` group id; NexCTF installs the plugin from PyPI and applies its migrations on start:
 
 ```bash
 NEXCTF_PLUGINS=nexctf-sandbox==1.0.0
+KVM_GID=993  # stat -c %g /dev/kvm
 ```
-
-Each plugin release supports one NexCTF minor version, so upgrade the two together:
-
-| nexctf-sandbox | NexCTF |
-|---|---|
-| 1.0.x | 0.12.x |
 
 The NexCTF process that checks submissions boots the microVMs, so it needs read and write access to `/dev/kvm`. Nothing else: the network setting is enforced by microsandbox's own network stack, with no extra capability or root.
 
-With NexCTF's `compose.yml`, that goes on the `app` service, e.g. in a `compose.override.yml`. `/dev/kvm` belongs to the host's `kvm` group, which the image's unprivileged user has to join; get its id with `stat -c %g /dev/kvm`:
+With NexCTF's `compose.yml`, that goes on the `app` service, e.g. in a `compose.override.yml`. `/dev/kvm` keeps the host's `root:kvm` ownership and `0660` mode inside the container, so the image's unprivileged user has to join the `kvm` group:
 
 ```yaml
 services:
@@ -31,12 +34,20 @@ services:
     devices:
       - /dev/kvm
     group_add:
-      - "993"  # the kvm group id on the host
-    environment:
-      NEXCTF_PLUGINS: nexctf-sandbox==1.0.0
+      - "${KVM_GID:?set KVM_GID to the host's kvm group id}"
 ```
 
-Then, on a question, pick the solution type **runner** or **script**.
+Restart NexCTF, then, on a question, pick the solution type **runner** or **script**.
+
+## Compatibility
+
+Each plugin release supports one NexCTF minor version:
+
+| nexctf-sandbox | NexCTF |
+|---|---|
+| 1.0.x | 0.12.x |
+
+To upgrade, move `NEXCTF_PLUGINS` to the plugin release that matches your NexCTF version and restart: NexCTF installs it and applies its new migrations. Upgrade NexCTF and the plugin together, as the plugin will not install against a NexCTF minor version it does not support.
 
 ## Features
 
@@ -100,3 +111,12 @@ uv run pytest -m live
 ```
 
 To load a local checkout in a dev NexCTF, add its path to `NEXCTF_PLUGINS` in NexCTF's `.env.dev.override`, then restart `task dev:backend`.
+
+### Releasing
+
+Publishing a GitHub release builds the package and pushes it to PyPI, with Trusted Publishing from the `pypi` environment. The release tag has to match the package version, or the workflow stops before publishing:
+
+1. Set the version with `uv version X.Y.Z`
+2. Update the install lines and the [Compatibility](#compatibility) table in this README
+3. Merge to `main` and wait for CI
+4. Publish a GitHub release tagged `vX.Y.Z`
