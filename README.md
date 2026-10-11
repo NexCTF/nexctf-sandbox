@@ -9,11 +9,17 @@ A [NexCTF](https://github.com/NexCTF/NexCTF) plugin that checks answers by runni
 
 ## Quick Start
 
-Add the plugin to NexCTF's `NEXCTF_PLUGINS` and restart it; NexCTF installs it and applies its migrations:
+Add the plugin to NexCTF's `NEXCTF_PLUGINS` and restart it; NexCTF installs it from PyPI and applies its migrations:
 
 ```bash
-NEXCTF_PLUGINS=git+https://github.com/NexCTF/Sandbox.git
+NEXCTF_PLUGINS=nexctf-sandbox==1.0.0
 ```
+
+Each plugin release supports one NexCTF minor version, so upgrade the two together:
+
+| nexctf-sandbox | NexCTF |
+|---|---|
+| 1.0.x | 0.12.x |
 
 The NexCTF process that checks submissions boots the microVMs, so it needs read and write access to `/dev/kvm`. Nothing else: the network setting is enforced by microsandbox's own network stack, with no extra capability or root.
 
@@ -27,7 +33,7 @@ services:
     group_add:
       - "993"  # the kvm group id on the host
     environment:
-      NEXCTF_PLUGINS: git+https://github.com/NexCTF/Sandbox.git
+      NEXCTF_PLUGINS: nexctf-sandbox==1.0.0
 ```
 
 Then, on a question, pick the solution type **runner** or **script**.

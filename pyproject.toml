@@ -1,18 +1,35 @@
 [project]
 name = "nexctf-sandbox"
-version = "0.1.0"
+version = "1.0.0"
 description = "Sandboxed code execution for NexCTF, script checker and code runner via microsandbox microVMs."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "NexCTF", email = "contact@nexctf.dev" }
+]
+keywords = ["nexctf", "ctf", "sandbox", "microvm", "plugin"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Framework :: AsyncIO",
+    "Intended Audience :: Education",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.15",
+    "Topic :: Security",
 ]
 requires-python = ">=3.15"
 dependencies = [
     "microsandbox>=0.7.8",
-    "nexctf>=0.12,<1.0",
+    "nexctf>=0.12,<0.13",
 ]
 
 [project.urls]
+Homepage = "https://github.com/NexCTF/Sandbox"
 Repository = "https://github.com/NexCTF/Sandbox"
+Issues = "https://github.com/NexCTF/Sandbox/issues"
 
 [build-system]
 requires = ["uv_build>=0.13.0,<0.14"]
