@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 PLUGIN_SLUG = "nexctf_sandbox"
 
-DEFAULT_BASE_IMAGE = "python:3.12-slim"
+DEFAULT_BASE_IMAGE = "python:3.14-slim"
 DEFAULT_CPUS = 1
 DEFAULT_MEMORY_MIB = 256
 DEFAULT_ROOT_DISK_MIB = 64
@@ -35,14 +35,14 @@ DEFAULT_NETWORK_ACCESS = NETWORK_DISABLED
 
 type ConfigValue = str | int | float | bool
 
-_DEFAULTS: dict[str, ConfigValue] = {
-    "base_image": DEFAULT_BASE_IMAGE,
-    "cpus": DEFAULT_CPUS,
-    "memory_mib": DEFAULT_MEMORY_MIB,
-    "root_disk_mib": DEFAULT_ROOT_DISK_MIB,
-    "max_concurrent": DEFAULT_MAX_CONCURRENT,
-    "network_access": DEFAULT_NETWORK_ACCESS,
-}
+_DEFAULTS: frozendict[str, ConfigValue] = frozendict(
+    base_image=DEFAULT_BASE_IMAGE,
+    cpus=DEFAULT_CPUS,
+    memory_mib=DEFAULT_MEMORY_MIB,
+    root_disk_mib=DEFAULT_ROOT_DISK_MIB,
+    max_concurrent=DEFAULT_MAX_CONCURRENT,
+    network_access=DEFAULT_NETWORK_ACCESS,
+)
 
 _MAX_OUTPUT_BYTES = 64 * 1024
 _RUN = (

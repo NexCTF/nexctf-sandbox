@@ -5,7 +5,7 @@ A [NexCTF](https://github.com/NexCTF/NexCTF) plugin that checks answers by runni
 [![ty](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ty/main/assets/badge/v0.json)](https://github.com/astral-sh/ty)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Python 3.14](https://img.shields.io/badge/python-3.14-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.15](https://img.shields.io/badge/python-3.15-blue.svg)](https://www.python.org/downloads/)
 
 ## Quick Start
 
@@ -70,7 +70,7 @@ Under **Settings → Plugins → Sandbox**:
 
 | Setting | Default |
 |---|---|
-| Base image | `python:3.12-slim`; any OCI image with `python3` on `PATH` |
+| Base image | `python:3.14-slim`; any OCI image with `python3` on `PATH` |
 | vCPUs | 1 |
 | Memory | 256 MiB, plus the root disk |
 | Root disk | 64 MiB, in RAM |
@@ -79,7 +79,7 @@ Under **Settings → Plugins → Sandbox**:
 
 ## Development
 
-The tests stub out the microVMs and need no database. NexCTF is a dev dependency installed from git (currently its `v0.11.0` tag).
+The tests stub out the microVMs and need no database. NexCTF is a dev dependency installed from git (currently its `v0.12.0` tag).
 
 ```bash
 uv sync

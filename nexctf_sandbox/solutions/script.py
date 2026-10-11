@@ -24,6 +24,7 @@ from pydantic import Field
 from sqlalchemy import CheckConstraint, ForeignKey, Text, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_object_session
 from sqlalchemy.orm import Mapped, mapped_column
+lazy from nexctf.core.db import get_db_context
 
 from nexctf_sandbox._sandbox import (
     MAX_PAYLOAD_CHARS,
@@ -67,10 +68,14 @@ _CHECKER_DESCRIPTION = (
 )
 
 # Label shown in the starter checker, and the parser applied before the checker runs.
-_FIELD_TYPES: dict[CustomFieldType, tuple[str, Callable[[str], Any]]] = {
-    CustomFieldType.integer: ("int", int),
-    CustomFieldType.boolean: ("bool", lambda value: value.lower() == "true"),
-}
+_FIELD_TYPES: frozendict[CustomFieldType, tuple[str, Callable[[str], Any]]] = (
+    frozendict(
+        {
+            CustomFieldType.integer: ("int", int),
+            CustomFieldType.boolean: ("bool", lambda value: value.lower() == "true"),
+        }
+    )
+)
 _STR_FIELD = ("str", str)
 
 
@@ -90,9 +95,6 @@ def checker_template(fields: list[tuple[str, CustomFieldType]]) -> str:
 
 
 def _db_context():
-    # Imported late: nexctf.core.db reads the host settings at import time.
-    from nexctf.core.db import get_db_context
-
     return get_db_context()
 
 
