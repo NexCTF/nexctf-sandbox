@@ -891,14 +891,14 @@ wheels = [
 
 [[package]]
 name = "microsandbox"
-version = "0.7.8"
+version = "0.7.11"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/41/d0/a738e7092da54b67bc7b1b7572d822e035d1a312deeeb61be348a5f039c6/microsandbox-0.7.8-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:456e10334a0d20c21a1731d8fb1fc8837508b5e397d08ebf17e83bc69d65e075", size = 45555766, upload-time = "2026-10-09T16:58:22.905Z" },
-    { url = "https://files.pythonhosted.org/packages/3b/59/98c3cb6c1d94d38bb322fcbb26ce12c7499a2103b68aa928b7ef685b00d2/microsandbox-0.7.8-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:74a151a7748dc34ac806fe4a17640d6334201201f371d6b585af81351629d53c", size = 48300627, upload-time = "2026-10-09T16:58:28.072Z" },
-    { url = "https://files.pythonhosted.org/packages/93/47/54b66fc7b5fdbb510a55a5ed7f095413e645374f22246095caa2a9790048/microsandbox-0.7.8-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:b7a34876693785a664c864b1920bf413d78f3503a74ca39ea06a551c42fa5b62", size = 46229772, upload-time = "2026-10-09T16:58:32.366Z" },
-    { url = "https://files.pythonhosted.org/packages/a9/c1/4dfe280531c584a416bf5c0e199d91fe6cd08197a7407c8ea10fb3809bf0/microsandbox-0.7.8-cp310-abi3-win_amd64.whl", hash = "sha256:88b93927ab5ba94bec43d0fde3fbe7a263646a602a6b6f17350c6c66ef89320d", size = 43192980, upload-time = "2026-10-09T16:58:37.054Z" },
-    { url = "https://files.pythonhosted.org/packages/5a/79/0bcbcaf4f552810ad0cbc534ef45e2d0b42ee88b1cd6cb6964e5d21ee704/microsandbox-0.7.8-cp310-abi3-win_arm64.whl", hash = "sha256:64a9151bba37c4314d62b850dc4d5d2be27ee675c170e322bde4db121ab54509", size = 45530732, upload-time = "2026-10-09T16:58:41.193Z" },
+    { url = "https://files.pythonhosted.org/packages/11/ee/8a489d1da7d1962033c83d21a2152a4c6a51548af82b470957b2c6fa5084/microsandbox-0.7.11-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:a442c004080e7a45de5f5814ca92447a4f21534dd5b9c92105a0adf8cc0bc7c8", size = 47218325, upload-time = "2026-10-24T23:29:50.67Z" },
+    { url = "https://files.pythonhosted.org/packages/d5/4f/0dd79f956dd55ccc30683229376c7d0b87fb2edbed428a5bce36fdccb4d9/microsandbox-0.7.11-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:f774a5ff6e61c5b88c42b3e058967c0b989c26d8a51c2b09f1e6a00be925b9c0", size = 50139351, upload-time = "2026-10-24T23:29:54.75Z" },
+    { url = "https://files.pythonhosted.org/packages/a7/b8/a6df21a2c8636b1cc8fb963fb15bbf1f3824ee0f4c7808850089000683b8/microsandbox-0.7.11-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:65f1e4bbf8d721c9f7f557329fb6c8cf41f554c1c6942eac8b941198fa283fe0", size = 48148484, upload-time = "2026-10-24T23:29:58.471Z" },
+    { url = "https://files.pythonhosted.org/packages/4f/fd/e5f02d6cb0e8fabe54ec796118b5c4ea0ff0a257ffa99ef6246c24165a94/microsandbox-0.7.11-cp310-abi3-win_amd64.whl", hash = "sha256:be3d230b9851a1c31f3df47e22b9a051f270bbd3cf1c1c395956758816eb1f58", size = 45018797, upload-time = "2026-10-24T23:30:02.567Z" },
+    { url = "https://files.pythonhosted.org/packages/82/38/8350c1d85b454056c2e87dad4f346d38df7e442bc2ebb1c0a03d12a544dc/microsandbox-0.7.11-cp310-abi3-win_arm64.whl", hash = "sha256:b42451eddccfbff3386ca55200baa8c6a1061ec4710fa8c58058400a131b1f60", size = 47186357, upload-time = "2026-10-24T23:30:06.531Z" },
 ]
 
 [[package]]
@@ -998,7 +998,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "microsandbox", specifier = ">=0.7.8" },
+    { name = "microsandbox", specifier = ">=0.7.11" },
     { name = "nexctf", specifier = ">=0.12.5,<0.13" },
 ]
 
