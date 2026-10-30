@@ -12,6 +12,8 @@ from microsandbox import ExecTimeoutError, Sandbox
 from nexctf_sandbox import _sandbox
 from nexctf_sandbox._sandbox import _MAX_OUTPUT_BYTES, python_runner, run_python
 
+from .conftest import _settings_returning
+
 pytestmark = [
     pytest.mark.live,
     pytest.mark.skipif(
@@ -85,16 +87,6 @@ _REACH = (
 )
 
 
-def _settings_with(**values):
-    """A ``_settings`` stub returning the defaults with *values* overridden."""
-    merged = dict(_sandbox._DEFAULTS) | values
-
-    async def _fake() -> dict:
-        return merged
-
-    return _fake
-
-
 def _require_host_internet() -> None:
     """Skip unless the host itself has egress to give; the allow path asserts REACHED.
 
@@ -137,7 +129,9 @@ async def test_internet_access_opens_the_public_internet(monkeypatch) -> None:
     exactly like the default and no test would notice."""
     _require_host_internet()
     monkeypatch.setattr(
-        _sandbox, "_settings", _settings_with(network_access=_sandbox.NETWORK_INTERNET)
+        _sandbox,
+        "_settings",
+        _settings_returning(network_access=_sandbox.NETWORK_INTERNET),
     )
 
     exit_code, stdout = await run_python(_REACH % _PUBLIC, timeout=20)
@@ -154,7 +148,7 @@ async def test_internet_access_keeps_the_host_out(monkeypatch, host_listener) ->
         (_sandbox.NETWORK_ALL, "REACHED"),
     ):
         monkeypatch.setattr(
-            _sandbox, "_settings", _settings_with(network_access=access)
+            _sandbox, "_settings", _settings_returning(network_access=access)
         )
 
         exit_code, stdout = await run_python(_REACH % host_listener, timeout=20)
