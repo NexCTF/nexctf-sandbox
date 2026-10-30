@@ -1,6 +1,6 @@
 # NexCTF Sandbox
 
-A [NexCTF](https://github.com/NexCTF/NexCTF) plugin that checks answers by running Python: a code runner that tests players' programs against test cases, and a script checker that validates answers with a function you write. Every run happens in a throwaway [microsandbox](https://github.com/microsandbox/microsandbox) microVM, booted for the submission and removed right after.
+A [NexCTF](https://github.com/NexCTF/NexCTF) plugin that checks answers by running Python: a code runner that tests players' programs against test cases, and a script checker that validates answers with a function you write. Every run happens in a throwaway [microsandbox](https://github.com/superradcompany/microsandbox) microVM, booted for the submission and removed right after.
 
 [![CI](https://github.com/NexCTF/nexctf-sandbox/actions/workflows/ci.yml/badge.svg)](https://github.com/NexCTF/nexctf-sandbox/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/nexctf-sandbox.svg)](https://pypi.org/project/nexctf-sandbox/)
@@ -20,7 +20,7 @@ A [NexCTF](https://github.com/NexCTF/NexCTF) plugin that checks answers by runni
 Add the plugin to NexCTF's `NEXCTF_PLUGINS` in its `.env`, along with the host's `kvm` group id; NexCTF installs the plugin from PyPI and applies its migrations on start:
 
 ```bash
-NEXCTF_PLUGINS=nexctf-sandbox==1.0.0
+NEXCTF_PLUGINS=nexctf-sandbox==1.1.0
 KVM_GID=993  # stat -c %g /dev/kvm
 ```
 
@@ -38,16 +38,6 @@ services:
 ```
 
 Restart NexCTF, then, on a question, pick the solution type **runner** or **script**.
-
-## Compatibility
-
-Each plugin release supports one NexCTF minor version:
-
-| nexctf-sandbox | NexCTF |
-|---|---|
-| 1.0.x | 0.12.x |
-
-To upgrade, move `NEXCTF_PLUGINS` to the plugin release that matches your NexCTF version and restart: NexCTF installs it and applies its new migrations. Upgrade NexCTF and the plugin together, as the plugin will not install against a NexCTF minor version it does not support.
 
 ## Features
 
@@ -87,40 +77,15 @@ The checker runs in its own microVM, with the base image's Python and the networ
 
 Under **Settings → Plugins → Sandbox**:
 
-| Setting | Default |
-|---|---|
-| Base image | `python:3.14-slim`; any OCI image with `python3` on `PATH` |
-| vCPUs | 1 |
-| Memory | 256 MiB, plus the root disk |
-| Root disk | 64 MiB, in RAM |
-| Network access | `disabled`; `internet` for public addresses and the host's DNS, `all` for unfiltered egress, the host's own network included |
-| Max concurrent microVMs | 8, across all challenges; takes effect after a restart |
+| Setting | Key | Default |
+|---|---|---|
+| Base image | `base_image` | `python:3.14-slim`; any OCI image with `python3` on `PATH` |
+| vCPUs | `cpus` | 1 |
+| Memory | `memory_mib` | 256 MiB, plus the root disk |
+| Root disk | `root_disk_mib` | 64 MiB, in RAM |
+| Network access | `network_access` | `disabled`; `internet` for public addresses and the host's DNS, `all` for unfiltered egress, the host's own network included |
+| Max concurrent microVMs | `max_concurrent` | 8 per NexCTF API worker process, across all challenges, so `WORKERS` × 8 in all; takes effect after a restart |
 
 The vCPUs, memory, root disk and max concurrent microVMs settings must be at least 1.
 
-## Development
-
-The tests stub out the microVMs and need no database. NexCTF is a dev dependency installed from git (currently its `v0.12.5` tag).
-
-```bash
-uv sync
-uv run pytest
-uv run ruff check . && uv run ruff format --check . && uv run ty check .
-```
-
-The `live` tests boot real microVMs and skip without `/dev/kvm`; the one reaching the internet also skips when the host has none. Run them on the host that will check submissions before an event:
-
-```bash
-uv run pytest -m live
-```
-
-To load a local checkout in a dev NexCTF, add its path to `NEXCTF_PLUGINS` in NexCTF's `.env.dev.override`, then restart `task dev:backend`.
-
-### Releasing
-
-Publishing a GitHub release builds the package and pushes it to PyPI, with Trusted Publishing from the `pypi` environment. The release tag has to match the package version, or the workflow stops before publishing:
-
-1. Set the version with `uv version X.Y.Z`
-2. Update the install lines and the [Compatibility](#compatibility) table in this README
-3. Merge to `main` and wait for CI
-4. Publish a GitHub release tagged `vX.Y.Z`
+Each setting can also come from NexCTF's environment, as `NEXCTF_NEXCTF_SANDBOX_` followed by its key in capitals, e.g. `NEXCTF_NEXCTF_SANDBOX_BASE_IMAGE=python:3.13-slim`. A value saved under Settings takes precedence over it.
