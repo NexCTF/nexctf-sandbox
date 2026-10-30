@@ -178,6 +178,20 @@ def test_a_bad_override_never_reaches_the_policy(monkeypatch) -> None:
     assert resolved == _sandbox.DEFAULT_NETWORK_ACCESS
 
 
+@pytest.mark.parametrize(
+    "key", ["cpus", "memory_mib", "root_disk_mib", "max_concurrent"]
+)
+def test_a_zero_size_never_reaches_the_vm(key: str) -> None:
+    """0 vCPUs or 0 MiB cannot boot, and 0 slots blocks every submission forever,
+    so the host refuses an override below 1 and resolves the code default instead."""
+    from nexctf.plugins import get_plugin_config
+
+    overrides = {f"{_sandbox.PLUGIN_SLUG}.{key}": "0"}
+    resolved = get_plugin_config(key, overrides, plugin_key=_sandbox.PLUGIN_SLUG)
+
+    assert resolved == _sandbox._DEFAULTS[key]
+
+
 def test_max_concurrent_sizes_the_semaphore(monkeypatch) -> None:
     """The semaphore is built once, from the setting, on first use."""
     monkeypatch.setattr(_sandbox, "_SLOTS", None)

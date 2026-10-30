@@ -96,6 +96,8 @@ Under **Settings → Plugins → Sandbox**:
 | Network access | `disabled`; `internet` for public addresses and the host's DNS, `all` for unfiltered egress, the host's own network included |
 | Max concurrent microVMs | 8, across all challenges; takes effect after a restart |
 
+The vCPUs, memory, root disk and max concurrent microVMs settings must be at least 1.
+
 ## Development
 
 The tests stub out the microVMs and need no database. NexCTF is a dev dependency installed from git (currently its `v0.12.5` tag).
