@@ -16,9 +16,11 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from nexctf_sandbox._sandbox import (
+    DEFAULT_TIMEOUT,
     MAX_PAYLOAD_CHARS,
     MAX_TIMEOUT,
     MIN_TIMEOUT,
+    Timeout,
     python_runner,
 )
 
@@ -49,10 +51,8 @@ class RunnerSolutionCreate(PydanticBase):
         title="Test cases",
         description="All test cases must pass for the answer to be accepted.",
     )
-    timeout: int = Field(
-        default=5,
-        ge=MIN_TIMEOUT,
-        le=MAX_TIMEOUT,
+    timeout: Timeout = Field(
+        default=DEFAULT_TIMEOUT,
         title="Timeout (s)",
         description="Maximum seconds each test case may run.",
     )
@@ -63,9 +63,7 @@ class RunnerSolutionUpdate(PydanticBase):
     test_cases: list[TestCase] | None = Field(
         default=None, max_length=MAX_TEST_CASES, title="Test cases"
     )
-    timeout: int | None = Field(
-        default=None, ge=MIN_TIMEOUT, le=MAX_TIMEOUT, title="Timeout (s)"
-    )
+    timeout: Timeout | None = Field(default=None, title="Timeout (s)")
 
 
 class RunnerSolutionRead(AdminSolutionRead):
@@ -113,7 +111,7 @@ class RunnerSolution(Solution):
 
     id: Mapped[UUID] = mapped_column(ForeignKey("solutions.id"), primary_key=True)
     test_cases: Mapped[list[dict]] = mapped_column(JSONB, default=list)
-    timeout: Mapped[int] = mapped_column(default=5)
+    timeout: Mapped[int] = mapped_column(default=DEFAULT_TIMEOUT)
 
     async def verify(self, submission: str, *, team_id=None) -> bool:
         if not self.test_cases:

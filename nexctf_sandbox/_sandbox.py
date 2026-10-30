@@ -6,6 +6,7 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 from functools import partial
+from typing import Annotated
 from uuid import uuid4
 
 from microsandbox import (
@@ -17,6 +18,7 @@ from microsandbox import (
 )
 from nexctf.core import appconfig
 from nexctf.plugins import ConfigCategory, ConfigDef, ConfigType
+from pydantic import Field
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +97,8 @@ _SLOTS: asyncio.Semaphore | None = None
 MAX_PAYLOAD_CHARS = _MAX_OUTPUT_BYTES
 MIN_TIMEOUT = 1
 MAX_TIMEOUT = 30
+DEFAULT_TIMEOUT = 5
+Timeout = Annotated[int, Field(ge=MIN_TIMEOUT, le=MAX_TIMEOUT)]
 
 
 def _slots(limit: int) -> asyncio.Semaphore:
