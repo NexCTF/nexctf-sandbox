@@ -15,8 +15,8 @@ from microsandbox import (
     RootDisk,
     Sandbox,
 )
+from nexctf.core import appconfig
 from nexctf.plugins import ConfigCategory, ConfigDef, ConfigType
-from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -97,9 +97,6 @@ MIN_TIMEOUT = 1
 MAX_TIMEOUT = 30
 
 
-_no_host = False
-
-
 def _slots(limit: int) -> asyncio.Semaphore:
     """Return the process-wide VM slot semaphore, building it on first use."""
     global _SLOTS
@@ -109,39 +106,20 @@ def _slots(limit: int) -> asyncio.Semaphore:
 
 
 async def _settings() -> dict[str, ConfigValue]:
-    """Resolve the admin-set VM settings, falling back to ``_DEFAULTS``."""
-    global _no_host
-    if _no_host:
-        return dict(_DEFAULTS)
-    try:
-        from nexctf.core import appconfig
-        from nexctf.core.cache import get_client
-    except ImportError, ValidationError:
-        logger.debug("sandbox.config host unavailable; using defaults", exc_info=True)
-        _no_host = True
-        return dict(_DEFAULTS)
-    except Exception:
-        logger.warning(
-            "sandbox.config host import failed; using defaults", exc_info=True
-        )
-        return dict(_DEFAULTS)
+    """Resolve the admin-set VM settings, falling back to ``_DEFAULTS``.
 
+    The host validates every override and falls back per key on its own; what
+    can still fail is reaching it at all: Redis down, or no host settings to
+    build a client from, as in the unit tests.
+    """
     try:
+        from nexctf.core.cache import get_client
+
         overrides = await appconfig.fetch_overrides(get_client())
     except Exception:
         logger.warning("sandbox.config fetch failed; using defaults", exc_info=True)
         return dict(_DEFAULTS)
-
-    resolved: dict[str, ConfigValue] = {}
-    for key, fallback in _DEFAULTS.items():
-        try:
-            resolved[key] = CONFIG.get(key, overrides)
-        except Exception:
-            logger.warning(
-                "sandbox.config bad key=%s; using default", key, exc_info=True
-            )
-            resolved[key] = fallback
-    return resolved
+    return {key: CONFIG.get(key, overrides) for key in _DEFAULTS}
 
 
 def _network(access: ConfigValue) -> Network:

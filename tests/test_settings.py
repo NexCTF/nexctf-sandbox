@@ -54,18 +54,15 @@ def _settings_returning(**values):
 
 
 async def test_defaults_are_used_when_the_host_config_is_unreachable(
-    monkeypatch, boot_kwargs
+    boot_kwargs,
 ) -> None:
-    """Outside the host app there is no Redis and no config defs — boot anyway."""
-    monkeypatch.setattr(_sandbox, "_no_host", False)
-
+    """Outside the host app there is no Redis to read settings from — boot anyway."""
     await _sandbox.run_python("print('hi')", timeout=5)
 
     defaults = _sandbox._DEFAULTS
     memory = int(defaults["memory_mib"]) + int(defaults["root_disk_mib"])
     assert boot_kwargs["cpus"] == defaults["cpus"]
     assert boot_kwargs["memory"] == memory
-    assert _sandbox._no_host is True  # latched, so the next boot does not retry
 
 
 async def test_admin_settings_reach_the_vm(monkeypatch, boot_kwargs) -> None:
@@ -201,9 +198,25 @@ def test_max_concurrent_sizes_the_semaphore(monkeypatch) -> None:
     assert _sandbox._slots(9)._value == 3
 
 
-async def test_a_redis_failure_is_not_latched(monkeypatch) -> None:
-    """A transient outage must fall back without disabling settings for good."""
-    monkeypatch.setattr(_sandbox, "_no_host", False)
+def _install_fake_host(monkeypatch, *, fetch_overrides) -> None:
+    """Stand in for Redis: a client that is never used, and *fetch_overrides*."""
+    monkeypatch.setitem(
+        sys.modules, "nexctf.core.cache", SimpleNamespace(get_client=lambda: object())
+    )
+    monkeypatch.setattr(_sandbox.appconfig, "fetch_overrides", fetch_overrides)
+
+
+async def test_stored_overrides_reach_the_settings(monkeypatch) -> None:
+    async def _stored(_redis) -> dict:
+        return _override("cpus", "4")
+
+    _install_fake_host(monkeypatch, fetch_overrides=_stored)
+
+    assert await _sandbox._settings() == dict(_sandbox._DEFAULTS) | {"cpus": 4}
+
+
+async def test_a_redis_failure_falls_back_to_the_defaults(monkeypatch) -> None:
+    """A transient outage must not fail the submission."""
 
     async def _boom(_redis) -> dict:
         raise ConnectionError("redis is down")
@@ -211,49 +224,6 @@ async def test_a_redis_failure_is_not_latched(monkeypatch) -> None:
     _install_fake_host(monkeypatch, fetch_overrides=_boom)
 
     assert await _sandbox._settings() == dict(_sandbox._DEFAULTS)
-    assert _sandbox._no_host is False
-
-
-async def test_a_bad_key_falls_back_to_that_key_alone(monkeypatch) -> None:
-    """One unusable key must not take the other settings down with it."""
-    monkeypatch.setattr(_sandbox, "_no_host", False)
-
-    def _get(key, overrides):
-        if key == "cpus":
-            raise LookupError(key)  # e.g. the category was never bound to a plugin
-        return 999 if key == "memory_mib" else _sandbox._DEFAULTS[key]
-
-    _install_fake_host(monkeypatch)
-    monkeypatch.setattr(_sandbox.CONFIG, "get", _get)
-
-    cfg = await _sandbox._settings()
-
-    assert cfg["cpus"] == _sandbox._DEFAULTS["cpus"]
-    assert cfg["memory_mib"] == 999  # the healthy keys still came through
-
-
-def _install_fake_host(monkeypatch, *, fetch_overrides=None):
-    """Stand in for the host modules ``_settings`` imports lazily.
-
-    ``from nexctf.core import appconfig`` resolves as an attribute on the
-    already-imported package, so that one has to be patched with setattr;
-    the cache is a plain sys.modules lookup.
-    """
-    import nexctf.core
-
-    async def _empty(_redis) -> dict:
-        return {}
-
-    monkeypatch.setitem(
-        sys.modules,
-        "nexctf.core.cache",
-        SimpleNamespace(get_client=lambda: object()),
-    )
-    monkeypatch.setattr(
-        nexctf.core,
-        "appconfig",
-        SimpleNamespace(fetch_overrides=fetch_overrides or _empty),
-    )
 
 
 def test_the_timeout_and_payload_limits_are_not_settings() -> None:
@@ -262,32 +232,6 @@ def test_the_timeout_and_payload_limits_are_not_settings() -> None:
     assert not {"timeout", "max_timeout", "min_timeout", "max_output_bytes"} & set(
         _sandbox._DEFAULTS
     )
-
-
-class _Hostile:
-    """Stands in for nexctf.core, failing with something other than ImportError."""
-
-    def __getattr__(self, name):
-        raise RuntimeError("something unexpected")
-
-
-async def test_an_unexpected_import_failure_is_not_latched(monkeypatch) -> None:
-    """Only a missing or unbuildable host latches. Anything else stays retryable,
-    or one odd hiccup pins every setting to its default until the next restart."""
-    monkeypatch.setattr(_sandbox, "_no_host", False)
-    monkeypatch.setitem(sys.modules, "nexctf.core", _Hostile())
-
-    assert await _sandbox._settings() == dict(_sandbox._DEFAULTS)
-    assert _sandbox._no_host is False
-
-
-async def test_a_missing_host_is_latched(monkeypatch) -> None:
-    """The case the latch exists for: no host app, so stop re-paying for the import."""
-    monkeypatch.setattr(_sandbox, "_no_host", False)
-    monkeypatch.setitem(sys.modules, "nexctf.core", None)  # forces ImportError
-
-    assert await _sandbox._settings() == dict(_sandbox._DEFAULTS)
-    assert _sandbox._no_host is True
 
 
 def test_base_image_is_registered_as_a_plain_string() -> None:
