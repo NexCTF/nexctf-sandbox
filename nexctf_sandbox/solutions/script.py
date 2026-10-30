@@ -191,18 +191,16 @@ async def run_checker(
     session: AsyncSession | None = None,
 ) -> bool:
     code = _WRAPPER.format(checker_code=checker_code)
-    if session is None and team_id is not None:
-        # A detached solution has nothing to read from, and opening a connection
-        # of our own would starve the pool: the checker sees no fields at all.
-        logger.warning(
-            "script.checker no session, team_fields empty team_id=%s", team_id
-        )
     try:
-        team_fields = (
-            await load_team_fields(session, team_id)
-            if session is not None and team_id is not None
-            else {}
-        )
+        team_fields: dict[str, Any] = {}
+        if team_id is not None and session is not None:
+            team_fields = await load_team_fields(session, team_id)
+        elif team_id is not None:
+            # A detached solution has nothing to read from, and opening a connection
+            # of our own would starve the pool: the checker sees no fields at all.
+            logger.warning(
+                "script.checker no session, team_fields empty team_id=%s", team_id
+            )
         stdin = json.dumps(
             {
                 "answer": answer,
