@@ -27,9 +27,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 lazy from nexctf.core.db import get_db_context
 
 from nexctf_sandbox._sandbox import (
+    DEFAULT_TIMEOUT,
     MAX_PAYLOAD_CHARS,
     MAX_TIMEOUT,
     MIN_TIMEOUT,
+    Timeout,
     run_python,
 )
 
@@ -122,10 +124,8 @@ class ScriptSolutionCreate(PydanticBase):
         title="Checker function",
         description=_CHECKER_DESCRIPTION,
     )
-    timeout: int = Field(
-        default=5,
-        ge=MIN_TIMEOUT,
-        le=MAX_TIMEOUT,
+    timeout: Timeout = Field(
+        default=DEFAULT_TIMEOUT,
         title="Timeout (s)",
         description="Maximum seconds the checker may run before being killed.",
     )
@@ -139,10 +139,8 @@ class ScriptSolutionUpdate(PydanticBase):
         title="Checker function",
         description=_CHECKER_DESCRIPTION,
     )
-    timeout: int | None = Field(
+    timeout: Timeout | None = Field(
         default=None,
-        ge=MIN_TIMEOUT,
-        le=MAX_TIMEOUT,
         title="Timeout (s)",
         description="Maximum seconds the checker may run before being killed.",
     )
@@ -239,7 +237,7 @@ class ScriptSolution(Solution):
 
     id: Mapped[UUID] = mapped_column(ForeignKey("solutions.id"), primary_key=True)
     checker_code: Mapped[str] = mapped_column(Text)
-    timeout: Mapped[int] = mapped_column(default=5)
+    timeout: Mapped[int] = mapped_column(default=DEFAULT_TIMEOUT)
 
     async def verify(self, submission: str, *, team_id: UUID | None = None) -> bool:
         try:
