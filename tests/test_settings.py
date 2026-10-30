@@ -211,12 +211,11 @@ def test_the_timeout_and_payload_limits_are_not_settings() -> None:
 
 def test_base_image_is_registered_as_a_plain_string() -> None:
     """A str default cannot be inferred, so the ConfigDef must say so explicitly."""
-    from nexctf.core import appconfig
+    from nexctf.core.appconfig import get_def
     from nexctf.plugins import ConfigType
 
-    assert (
-        appconfig._DEFS[f"{_sandbox.CONFIG.key}.base_image"].type is ConfigType.STRING
-    )
+    def_ = get_def(f"{_sandbox.CONFIG.key}.base_image")
+    assert def_.type is ConfigType.STRING
 
 
 async def test_every_access_setting_boots_with_its_policy(monkeypatch, fake_vm) -> None:
