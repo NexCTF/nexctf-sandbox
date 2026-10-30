@@ -226,6 +226,20 @@ async def test_a_redis_failure_falls_back_to_the_defaults(monkeypatch) -> None:
     assert await _sandbox._settings() == dict(_sandbox._DEFAULTS)
 
 
+async def test_a_redis_failure_keeps_the_env_settings(monkeypatch) -> None:
+    """The host resolves ENV under the stored overrides; losing Redis must not
+    drop an operator's NEXCTF_* setting, such as a pinned base image."""
+
+    async def _boom(_redis) -> dict:
+        raise ConnectionError("redis is down")
+
+    _install_fake_host(monkeypatch, fetch_overrides=_boom)
+    env_key = f"NEXCTF_{_sandbox.CONFIG.key}.base_image".upper().replace(".", "_")
+    monkeypatch.setenv(env_key, "python:3.13-slim")
+
+    assert (await _sandbox._settings())["base_image"] == "python:3.13-slim"
+
+
 def test_the_timeout_and_payload_limits_are_not_settings() -> None:
     """They are baked into DB CHECK constraints and Pydantic bounds at import time,
     so they must not become runtime settings — Postgres would reject the value."""

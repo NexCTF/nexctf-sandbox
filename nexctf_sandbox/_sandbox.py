@@ -106,19 +106,21 @@ def _slots(limit: int) -> asyncio.Semaphore:
 
 
 async def _settings() -> dict[str, ConfigValue]:
-    """Resolve the admin-set VM settings, falling back to ``_DEFAULTS``.
+    """Resolve the admin-set VM settings: stored override > ENV > code default.
 
     The host validates every override and falls back per key on its own; what
-    can still fail is reaching it at all: Redis down, or no host settings to
-    build a client from, as in the unit tests.
+    can still fail is reaching Redis at all, or building a client with no host
+    settings, as in the unit tests. Then only the stored overrides are lost.
     """
     try:
         from nexctf.core.cache import get_client
 
         overrides = await appconfig.fetch_overrides(get_client())
     except Exception:
-        logger.warning("sandbox.config fetch failed; using defaults", exc_info=True)
-        return dict(_DEFAULTS)
+        logger.warning(
+            "sandbox.config fetch failed; using ENV and defaults", exc_info=True
+        )
+        overrides = {}
     return {key: CONFIG.get(key, overrides) for key in _DEFAULTS}
 
 
