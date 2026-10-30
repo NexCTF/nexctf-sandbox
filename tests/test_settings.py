@@ -61,10 +61,10 @@ async def test_defaults_are_used_when_the_host_config_is_unreachable(
 
     await _sandbox.run_python("print('hi')", timeout=5)
 
-    assert boot_kwargs["cpus"] == _sandbox.DEFAULT_CPUS
-    assert boot_kwargs["memory"] == (
-        _sandbox.DEFAULT_MEMORY_MIB + _sandbox.DEFAULT_ROOT_DISK_MIB
-    )
+    defaults = _sandbox._DEFAULTS
+    memory = int(defaults["memory_mib"]) + int(defaults["root_disk_mib"])
+    assert boot_kwargs["cpus"] == defaults["cpus"]
+    assert boot_kwargs["memory"] == memory
     assert _sandbox._no_host is True  # latched, so the next boot does not retry
 
 
@@ -160,22 +160,24 @@ def test_every_choice_maps_to_a_policy() -> None:
 
 
 def test_an_unknown_access_value_denies_rather_than_widens() -> None:
-    """Not reachable through an override, but if _DEFAULTS and the ConfigDef ever
-    drift apart they must drift closed."""
+    """Not reachable through an override, but if a choice is ever added without
+    its branch it must fail closed."""
     assert _sandbox._network("everything") == _sandbox.Network.none()
 
 
-def test_a_bad_override_never_reaches_the_policy(monkeypatch) -> None:
+def _override(key: str, value: str) -> dict[str, str]:
+    """A stored override for *key*, under the key the host registered it at."""
+    return {f"{_sandbox.CONFIG.key}.{key}": value}
+
+
+def test_a_bad_override_never_reaches_the_policy() -> None:
     """The guard the branch above backs up: the host rejects a non-choice override
     and hands back the code default instead of the raw string."""
-    from nexctf.plugins import get_plugin_config
-
-    key = f"{_sandbox.PLUGIN_SLUG}.network_access"
-    resolved = get_plugin_config(
-        "network_access", {key: "yes-please"}, plugin_key=_sandbox.PLUGIN_SLUG
+    resolved = _sandbox.CONFIG.get(
+        "network_access", _override("network_access", "yes-please")
     )
 
-    assert resolved == _sandbox.DEFAULT_NETWORK_ACCESS
+    assert resolved == _sandbox.NETWORK_DISABLED
 
 
 @pytest.mark.parametrize(
@@ -184,10 +186,7 @@ def test_a_bad_override_never_reaches_the_policy(monkeypatch) -> None:
 def test_a_zero_size_never_reaches_the_vm(key: str) -> None:
     """0 vCPUs or 0 MiB cannot boot, and 0 slots blocks every submission forever,
     so the host refuses an override below 1 and resolves the code default instead."""
-    from nexctf.plugins import get_plugin_config
-
-    overrides = {f"{_sandbox.PLUGIN_SLUG}.{key}": "0"}
-    resolved = get_plugin_config(key, overrides, plugin_key=_sandbox.PLUGIN_SLUG)
+    resolved = _sandbox.CONFIG.get(key, _override(key, "0"))
 
     assert resolved == _sandbox._DEFAULTS[key]
 
@@ -219,25 +218,26 @@ async def test_a_bad_key_falls_back_to_that_key_alone(monkeypatch) -> None:
     """One unusable key must not take the other settings down with it."""
     monkeypatch.setattr(_sandbox, "_no_host", False)
 
-    def _get(key, overrides, *, plugin_key=None):
+    def _get(key, overrides):
         if key == "cpus":
-            raise KeyError(key)  # never registered, or an override that will not cast
+            raise LookupError(key)  # e.g. the category was never bound to a plugin
         return 999 if key == "memory_mib" else _sandbox._DEFAULTS[key]
 
-    _install_fake_host(monkeypatch, get_plugin_config=_get)
+    _install_fake_host(monkeypatch)
+    monkeypatch.setattr(_sandbox.CONFIG, "get", _get)
 
     cfg = await _sandbox._settings()
 
-    assert cfg["cpus"] == _sandbox.DEFAULT_CPUS
+    assert cfg["cpus"] == _sandbox._DEFAULTS["cpus"]
     assert cfg["memory_mib"] == 999  # the healthy keys still came through
 
 
-def _install_fake_host(monkeypatch, *, fetch_overrides=None, get_plugin_config=None):
+def _install_fake_host(monkeypatch, *, fetch_overrides=None):
     """Stand in for the host modules ``_settings`` imports lazily.
 
     ``from nexctf.core import appconfig`` resolves as an attribute on the
     already-imported package, so that one has to be patched with setattr;
-    the other two are plain sys.modules lookups.
+    the cache is a plain sys.modules lookup.
     """
     import nexctf.core
 
@@ -254,31 +254,6 @@ def _install_fake_host(monkeypatch, *, fetch_overrides=None, get_plugin_config=N
         "appconfig",
         SimpleNamespace(fetch_overrides=fetch_overrides or _empty),
     )
-    monkeypatch.setitem(
-        sys.modules,
-        "nexctf.plugins",
-        SimpleNamespace(
-            get_plugin_config=get_plugin_config
-            or (lambda key, o, *, plugin_key=None: _sandbox._DEFAULTS[key])
-        ),
-    )
-
-
-def test_every_setting_is_registered_with_the_host() -> None:
-    """Each key in ``_DEFAULTS`` needs a ConfigDef, or it silently stays on its default."""
-    from nexctf.core import appconfig
-
-    for key in _sandbox._DEFAULTS:
-        assert f"{_sandbox.PLUGIN_SLUG}.{key}" in appconfig._DEFS
-
-
-def test_the_slug_matches_the_key_the_host_tracks_this_plugin_under() -> None:
-    """A mismatch would file the settings under a category the admin UI never shows."""
-    # Not part of the plugins package's public re-exports — the host calls it,
-    # plugins do not. Imported from its module for the sake of this assertion.
-    from nexctf.plugins.loader import plugin_key
-
-    assert _sandbox.PLUGIN_SLUG == plugin_key("nexctf-sandbox")
 
 
 def test_the_timeout_and_payload_limits_are_not_settings() -> None:
@@ -321,7 +296,7 @@ def test_base_image_is_registered_as_a_plain_string() -> None:
     from nexctf.plugins import ConfigType
 
     assert (
-        appconfig._DEFS[f"{_sandbox.PLUGIN_SLUG}.base_image"].type is ConfigType.STRING
+        appconfig._DEFS[f"{_sandbox.CONFIG.key}.base_image"].type is ConfigType.STRING
     )
 
 

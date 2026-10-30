@@ -6,12 +6,14 @@ from collections.abc import Callable
 from contextlib import asynccontextmanager
 
 import pytest
+from nexctf.plugins.loader import plugin_key
 from nexctf.plugins.testing import register_plugin
 
 import nexctf_sandbox
-from nexctf_sandbox import _sandbox
 
-register_plugin(nexctf_sandbox.plugin, _sandbox.PLUGIN_SLUG)
+# Under the key the host's loader derives from the distribution name, so the
+# settings land where they would in production.
+register_plugin(nexctf_sandbox.plugin, plugin_key("nexctf-sandbox"))
 
 
 def _returns(exit_code: int, stdout: str = "") -> Callable:

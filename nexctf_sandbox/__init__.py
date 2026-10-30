@@ -1,21 +1,6 @@
-from nexctf.plugins import (
-    ConfigCategory,
-    ConfigDef,
-    ConfigType,
-    InputType,
-    Plugin,
-    TypeDef,
-)
+from nexctf.plugins import InputType, Plugin, TypeDef
 
-from nexctf_sandbox._sandbox import (
-    DEFAULT_BASE_IMAGE,
-    DEFAULT_CPUS,
-    DEFAULT_MAX_CONCURRENT,
-    DEFAULT_MEMORY_MIB,
-    DEFAULT_NETWORK_ACCESS,
-    DEFAULT_ROOT_DISK_MIB,
-    NETWORK_ACCESS_CHOICES,
-)
+from nexctf_sandbox._sandbox import CONFIG
 from nexctf_sandbox.solutions.runner import (
     RunnerSolution,
     RunnerSolutionCreate,
@@ -50,57 +35,5 @@ plugin = Plugin(
             description="Script checker — runs a custom Python function check(answer, team_id, team_fields) → bool to validate the answer.",
         ),
     ],
-    config=ConfigCategory(
-        "Sandbox",
-        (
-            ConfigDef(
-                key="base_image",
-                label="Base image",
-                default=DEFAULT_BASE_IMAGE,
-                type=ConfigType.STRING,
-                description="OCI image every microVM boots from. It must provide python3 on PATH.",
-            ),
-            ConfigDef(
-                key="cpus",
-                label="vCPUs",
-                default=DEFAULT_CPUS,
-                min=1,
-                description="Virtual CPUs given to each microVM.",
-            ),
-            ConfigDef(
-                key="memory_mib",
-                label="Memory (MiB)",
-                default=DEFAULT_MEMORY_MIB,
-                min=1,
-                description="Guest RAM for each microVM. The root disk is added on top of this.",
-            ),
-            ConfigDef(
-                key="root_disk_mib",
-                label="Root disk (MiB)",
-                default=DEFAULT_ROOT_DISK_MIB,
-                min=1,
-                description="Size of the tmpfs root disk. It is RAM-backed, so it is charged to guest memory.",
-            ),
-            ConfigDef(
-                key="network_access",
-                label="Network access",
-                default=DEFAULT_NETWORK_ACCESS,
-                type=ConfigType.CHOICE,
-                choices=NETWORK_ACCESS_CHOICES,
-                description=(
-                    "'disabled': no egress at all.\n"
-                    "'internet': public addresses, plus the host's DNS resolver on port 53.\n"
-                    "'all': unfiltered, including everything on the host's own network."
-                ),
-            ),
-            ConfigDef(
-                key="max_concurrent",
-                label="Max concurrent microVMs",
-                default=DEFAULT_MAX_CONCURRENT,
-                min=1,
-                description="Ceiling on microVMs running at once, across all challenges. Takes effect after a restart.",
-            ),
-        ),
-        icon="box",
-    ),
+    config=CONFIG,
 )
