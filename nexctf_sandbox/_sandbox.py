@@ -1,4 +1,4 @@
-"""Shared microsandbox helper for solution plugins that execute untrusted code."""
+"""The sandbox settings, and the microsandbox helper solutions run untrusted code with."""
 
 from __future__ import annotations
 
@@ -15,33 +15,74 @@ from microsandbox import (
     RootDisk,
     Sandbox,
 )
+from nexctf.plugins import ConfigCategory, ConfigDef, ConfigType
 from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
-
-PLUGIN_SLUG = "nexctf_sandbox"
-
-DEFAULT_BASE_IMAGE = "python:3.14-slim"
-DEFAULT_CPUS = 1
-DEFAULT_MEMORY_MIB = 256
-DEFAULT_ROOT_DISK_MIB = 64
-DEFAULT_MAX_CONCURRENT = 8
 
 NETWORK_DISABLED = "disabled"  # no egress at all
 NETWORK_INTERNET = "internet"  # public addresses and DNS, but nothing host-side
 NETWORK_ALL = "all"  # unfiltered, including the host's own network
 NETWORK_ACCESS_CHOICES = [NETWORK_DISABLED, NETWORK_INTERNET, NETWORK_ALL]
-DEFAULT_NETWORK_ACCESS = NETWORK_DISABLED
+
+CONFIG = ConfigCategory(
+    "Sandbox",
+    (
+        ConfigDef(
+            key="base_image",
+            label="Base image",
+            default="python:3.14-slim",
+            type=ConfigType.STRING,
+            description="OCI image every microVM boots from. It must provide python3 on PATH.",
+        ),
+        ConfigDef(
+            key="cpus",
+            label="vCPUs",
+            default=1,
+            min=1,
+            description="Virtual CPUs given to each microVM.",
+        ),
+        ConfigDef(
+            key="memory_mib",
+            label="Memory (MiB)",
+            default=256,
+            min=1,
+            description="Guest RAM for each microVM. The root disk is added on top of this.",
+        ),
+        ConfigDef(
+            key="root_disk_mib",
+            label="Root disk (MiB)",
+            default=64,
+            min=1,
+            description="Size of the tmpfs root disk. It is RAM-backed, so it is charged to guest memory.",
+        ),
+        ConfigDef(
+            key="network_access",
+            label="Network access",
+            default=NETWORK_DISABLED,
+            type=ConfigType.CHOICE,
+            choices=NETWORK_ACCESS_CHOICES,
+            description=(
+                "'disabled': no egress at all.\n"
+                "'internet': public addresses, plus the host's DNS resolver on port 53.\n"
+                "'all': unfiltered, including everything on the host's own network."
+            ),
+        ),
+        ConfigDef(
+            key="max_concurrent",
+            label="Max concurrent microVMs",
+            default=8,
+            min=1,
+            description="Ceiling on microVMs running at once, across all challenges. Takes effect after a restart.",
+        ),
+    ),
+    icon="box",
+)
 
 type ConfigValue = str | int | float | bool
 
 _DEFAULTS: frozendict[str, ConfigValue] = frozendict(
-    base_image=DEFAULT_BASE_IMAGE,
-    cpus=DEFAULT_CPUS,
-    memory_mib=DEFAULT_MEMORY_MIB,
-    root_disk_mib=DEFAULT_ROOT_DISK_MIB,
-    max_concurrent=DEFAULT_MAX_CONCURRENT,
-    network_access=DEFAULT_NETWORK_ACCESS,
+    {def_.key: def_.default for def_ in CONFIG.defs}
 )
 
 _MAX_OUTPUT_BYTES = 64 * 1024
@@ -75,7 +116,6 @@ async def _settings() -> dict[str, ConfigValue]:
     try:
         from nexctf.core import appconfig
         from nexctf.core.cache import get_client
-        from nexctf.plugins import get_plugin_config
     except ImportError, ValidationError:
         logger.debug("sandbox.config host unavailable; using defaults", exc_info=True)
         _no_host = True
@@ -95,7 +135,7 @@ async def _settings() -> dict[str, ConfigValue]:
     resolved: dict[str, ConfigValue] = {}
     for key, fallback in _DEFAULTS.items():
         try:
-            resolved[key] = get_plugin_config(key, overrides, plugin_key=PLUGIN_SLUG)
+            resolved[key] = CONFIG.get(key, overrides)
         except Exception:
             logger.warning(
                 "sandbox.config bad key=%s; using default", key, exc_info=True
