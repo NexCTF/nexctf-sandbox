@@ -12,7 +12,7 @@ A [NexCTF](https://github.com/NexCTF/NexCTF) plugin that checks answers by runni
 
 ## Requirements
 
-- NexCTF 0.12.x, see [Compatibility](#compatibility)
+- NexCTF 0.12.5 or a later 0.12.x, see [Compatibility](#compatibility)
 - A Linux host with KVM: the NexCTF process that checks submissions needs read and write access to `/dev/kvm`
 
 ## Quick Start
@@ -65,6 +65,8 @@ To upgrade, move `NEXCTF_PLUGINS` to the plugin release that matches your NexCTF
 - Checkers written without `team_fields` keep working as they are
 - For questions with an **input**, **text** or **code** input
 
+A run that outlasts its timeout is not counted as a wrong answer: the player is told the check timed out and can submit again, and the admin event feed records a `solution.timeout`.
+
 ## Writing a checker
 
 The checker is a function named `check` that returns `True` to accept the answer. `team_id` is the team's id as a string, or `None`; `team_fields` maps each team custom field name to its value (`int`, `bool` or `str`), and a key is missing when the team left the field empty. Declare `team_fields` only if you need it:
@@ -96,7 +98,7 @@ Under **Settings → Plugins → Sandbox**:
 
 ## Development
 
-The tests stub out the microVMs and need no database. NexCTF is a dev dependency installed from git (currently its `v0.12.0` tag).
+The tests stub out the microVMs and need no database. NexCTF is a dev dependency installed from git (currently its `v0.12.5` tag).
 
 ```bash
 uv sync
