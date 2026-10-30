@@ -31,7 +31,7 @@ from nexctf_sandbox.solutions.script import (
     ScriptSolutionUpdate,
 )
 
-from .conftest import _returns
+from .conftest import _capturing, _raises, _returns
 
 _PAYLOAD = {"answer": "ans", "team_id": "T", "team_fields": {"seed": 1}}
 
@@ -72,22 +72,14 @@ async def test_verify_false_when_checker_exits_nonzero(patch_run_python) -> None
 async def test_verify_raises_on_timeout(patch_run_python) -> None:
     """Swallowing this into False marks a correct answer wrong whenever the sandbox
     host is merely loaded, and hides the load from the admin event feed."""
-
-    async def _timeout(code, stdin="", *, timeout):
-        raise ExecTimeoutError("timed out")
-
-    patch_run_python(script, _timeout)
+    patch_run_python(script, _raises(ExecTimeoutError("timed out")))
     with pytest.raises(SolutionTimeoutError):
         await ScriptSolution(checker_code="...", timeout=5).verify("ans")
 
 
 async def test_verify_false_on_unexpected_error(patch_run_python) -> None:
     """Any checker failure is swallowed and rejected, never raised to the caller."""
-
-    async def _boom(code, stdin="", *, timeout):
-        raise RuntimeError("boom")
-
-    patch_run_python(script, _boom)
+    patch_run_python(script, _raises(RuntimeError("boom")))
     await assert_verifies(
         ScriptSolution(checker_code="...", timeout=5), [("ans", False)]
     )
@@ -95,14 +87,8 @@ async def test_verify_false_on_unexpected_error(patch_run_python) -> None:
 
 async def test_checker_receives_answer_and_team_id(patch_run_python) -> None:
     """The wrapper embeds the checker code and feeds answer/team_id as JSON stdin."""
-    captured: dict[str, str] = {}
-
-    async def _capture(code: str, stdin: str = "", *, timeout: int) -> tuple[int, str]:
-        captured["code"] = code
-        captured["stdin"] = stdin
-        return 0, ""
-
-    patch_run_python(script, _capture)
+    captured, fake = _capturing()
+    patch_run_python(script, fake)
     team_id = uuid4()
     solution = ScriptSolution(checker_code="def check(a, t): return True", timeout=5)
     await solution.verify("my-answer", team_id=team_id)
@@ -118,13 +104,8 @@ async def test_checker_receives_answer_and_team_id(patch_run_python) -> None:
 
 async def test_checker_receives_null_team_id_when_none(patch_run_python) -> None:
     """team_id=None must serialize to JSON null, not the string 'None'."""
-    captured: dict[str, str] = {}
-
-    async def _capture(code: str, stdin: str = "", *, timeout: int) -> tuple[int, str]:
-        captured["stdin"] = stdin
-        return 0, ""
-
-    patch_run_python(script, _capture)
+    captured, fake = _capturing()
+    patch_run_python(script, fake)
     solution = ScriptSolution(checker_code="def check(a, t): return True", timeout=5)
     await solution.verify("my-answer", team_id=None)
 
@@ -136,19 +117,15 @@ async def test_checker_receives_team_fields_from_the_solution_session(
     patch_run_python, patch_team_fields
 ) -> None:
     """Fields are read through the session the solution was loaded with."""
-    captured: dict[str, str] = {}
+    captured, fake = _capturing()
     loaded_with: list = []
     team_id = uuid4()
-
-    async def _capture(code: str, stdin: str = "", *, timeout: int) -> tuple[int, str]:
-        captured["stdin"] = stdin
-        return 0, ""
 
     async def _load(s, tid):
         loaded_with.append((s, tid))
         return {"seed": 42, "hardmode": True}
 
-    patch_run_python(script, _capture)
+    patch_run_python(script, fake)
     session = patch_team_fields(_load)
     solution = ScriptSolution(checker_code="...", timeout=5)
     await solution.verify("my-answer", team_id=team_id)

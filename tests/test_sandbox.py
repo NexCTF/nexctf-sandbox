@@ -9,67 +9,23 @@ import pytest
 
 from nexctf_sandbox import _sandbox
 
-
-class _FakeShellResult:
-    def __init__(self, exit_code: int, stdout_text: str, stderr_text: str = "") -> None:
-        self.exit_code = exit_code
-        self.stdout_text = stdout_text
-        self.stderr_text = stderr_text
+from .conftest import _FakeSandbox, _FakeShellResult
 
 
-class _FakeFs:
-    async def write(self, path: str, data: bytes) -> None:
-        pass
-
-
-class _FakeSandbox:
-    def __init__(self) -> None:
-        self.fs = _FakeFs()
-        self.shell_kwargs: dict | None = None
-        self.destroyed: list[bool] = []
-
-    async def shell(self, cmd: str, *, stdin=None, timeout=None):
-        self.shell_kwargs = {"cmd": cmd, "stdin": stdin, "timeout": timeout}
-        return _FakeShellResult(0, "ok")
-
-    async def destroy(self, *, force: bool = False, timeout=None) -> None:
-        self.destroyed.append(force)
-
-
-def _patch_sandbox(monkeypatch) -> tuple[_FakeSandbox, list[str]]:
-    """Swap Sandbox.create/remove for fakes; return the fake VM and the removed names."""
-    fake = _FakeSandbox()
-    removed: list[str] = []
-
-    async def _fake_create(name, **kwargs):
-        return fake
-
-    async def _fake_remove(name):
-        removed.append(name)
-
-    monkeypatch.setattr(_sandbox.Sandbox, "create", _fake_create)
-    monkeypatch.setattr(_sandbox.Sandbox, "remove", _fake_remove)
-    return fake, removed
-
-
-async def test_run_python_sends_stdin_as_bytes(monkeypatch) -> None:
+async def test_run_python_sends_stdin_as_bytes(fake_vm) -> None:
     """microsandbox reads a bare str as a stdin mode name, not data — regression guard
     for a bug where plain str stdin raised ``ValueError: unknown stdin mode``."""
-    fake, _ = _patch_sandbox(monkeypatch)
-
     await _sandbox.run_python("print('hi')", "hello world", timeout=5)
 
-    assert fake.shell_kwargs is not None
-    assert fake.shell_kwargs["stdin"] == b"hello world"
+    assert fake_vm.shell_kwargs is not None
+    assert fake_vm.shell_kwargs["stdin"] == b"hello world"
 
 
-async def test_run_python_sends_none_for_empty_stdin(monkeypatch) -> None:
-    fake, _ = _patch_sandbox(monkeypatch)
-
+async def test_run_python_sends_none_for_empty_stdin(fake_vm) -> None:
     await _sandbox.run_python("print('hi')", "", timeout=5)
 
-    assert fake.shell_kwargs is not None
-    assert fake.shell_kwargs["stdin"] is None
+    assert fake_vm.shell_kwargs is not None
+    assert fake_vm.shell_kwargs["stdin"] is None
 
 
 def test_output_is_capped_in_the_guest() -> None:
@@ -79,35 +35,32 @@ def test_output_is_capped_in_the_guest() -> None:
     assert "exit $rc" in _sandbox._RUN  # the program's own exit code, not head's
 
 
-async def test_sandbox_is_destroyed_not_just_killed(monkeypatch) -> None:
+async def test_sandbox_is_destroyed_not_just_killed(fake_vm) -> None:
     """kill() leaves the registration and its disk on the host — the VM must be
     removed too, or every submission leaks host disk permanently."""
-    fake, removed = _patch_sandbox(monkeypatch)
-
     await _sandbox.run_python("print('hi')", timeout=5)
 
     # Forced: nothing in the guest is worth a graceful stop.
-    assert fake.destroyed == [True]
-    assert removed == []
+    assert fake_vm.destroyed == [True]
+    assert fake_vm.removed == []
 
 
-async def test_sandbox_is_destroyed_when_the_run_raises(monkeypatch) -> None:
-    fake, _ = _patch_sandbox(monkeypatch)
-
+async def test_sandbox_is_destroyed_when_the_run_raises(monkeypatch, fake_vm) -> None:
     async def _boom(*args, **kwargs):
         raise RuntimeError("exec blew up")
 
-    monkeypatch.setattr(fake, "shell", _boom)
+    monkeypatch.setattr(fake_vm, "shell", _boom)
 
     with pytest.raises(RuntimeError):
         await _sandbox.run_python("print('hi')", timeout=5)
 
-    assert fake.destroyed == [True]
+    assert fake_vm.destroyed == [True]
 
 
-async def test_sandbox_is_removed_by_name_when_create_fails(monkeypatch) -> None:
+async def test_sandbox_is_removed_by_name_when_create_fails(
+    monkeypatch, fake_vm
+) -> None:
     """A create that fails partway can leave a record behind, with no handle to it."""
-    _, removed = _patch_sandbox(monkeypatch)
 
     async def _fail(name, **kwargs):
         raise RuntimeError("boot failed")
@@ -117,11 +70,11 @@ async def test_sandbox_is_removed_by_name_when_create_fails(monkeypatch) -> None
     with pytest.raises(RuntimeError):
         await _sandbox.run_python("print('hi')", timeout=5)
 
-    assert len(removed) == 1
-    assert removed[0].startswith("nexctf-")
+    assert len(fake_vm.removed) == 1
+    assert fake_vm.removed[0].startswith("nexctf-")
 
 
-async def test_concurrent_runs_are_capped(monkeypatch) -> None:
+async def test_concurrent_runs_are_capped(monkeypatch, fake_vm) -> None:
     """Nothing else limits how many microVMs exist at once — each is a vCPU plus
     _MEMORY_MIB, and rate limiting is per user, not per host."""
     live = 0
@@ -139,7 +92,6 @@ async def test_concurrent_runs_are_capped(monkeypatch) -> None:
     async def _fake_create(name, **kwargs):
         return _SlowSandbox()
 
-    _patch_sandbox(monkeypatch)
     monkeypatch.setattr(_sandbox.Sandbox, "create", _fake_create)
     monkeypatch.setattr(_sandbox, "_SLOTS", asyncio.Semaphore(2))
 
@@ -148,15 +100,14 @@ async def test_concurrent_runs_are_capped(monkeypatch) -> None:
     assert peak == 2
 
 
-async def test_payloads_are_never_logged(monkeypatch, caplog) -> None:
+async def test_payloads_are_never_logged(monkeypatch, caplog, fake_vm) -> None:
     """For script solutions the checker source is where the flag lives, and a checker
     that raises echoes it onto stderr — so payloads are not logged at any level."""
-    fake, _ = _patch_sandbox(monkeypatch)
 
     async def _shell(cmd, *, stdin=None, timeout=None):
         return _FakeShellResult(0, "FLAG{secret}", "FLAG{secret}")
 
-    monkeypatch.setattr(fake, "shell", _shell)
+    monkeypatch.setattr(fake_vm, "shell", _shell)
 
     with caplog.at_level(logging.DEBUG, logger=_sandbox.__name__):
         await _sandbox.run_python("print('hi')", timeout=5)

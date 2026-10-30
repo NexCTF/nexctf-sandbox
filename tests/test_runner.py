@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
 from uuid import uuid4
 
 import pytest
@@ -22,7 +21,7 @@ from nexctf_sandbox.solutions.runner import (
     RunnerSolutionUpdate,
 )
 
-from .conftest import _returns
+from .conftest import _raises, _returns
 
 
 async def _echo_stdin(code: str, stdin: str = "", *, timeout: int) -> tuple[int, str]:
@@ -55,20 +54,12 @@ async def test_verify_false_when_one_case_mismatches(patch_python_runner) -> Non
     await assert_verifies(solution, [("any code", False)])
 
 
-async def test_verify_false_when_no_test_cases(monkeypatch) -> None:
+async def test_verify_false_when_no_test_cases(patch_python_runner) -> None:
     """A solution with no test cases can never be satisfied, so it must not pay a boot."""
-    boots = 0
-
-    @asynccontextmanager
-    async def _runner():
-        nonlocal boots
-        boots += 1
-        yield _echo_stdin
-
-    monkeypatch.setattr(runner, "python_runner", _runner)
+    stats = patch_python_runner(runner, _echo_stdin)
     await assert_verifies(RunnerSolution(test_cases=[], timeout=5), [("code", False)])
 
-    assert boots == 0
+    assert stats.boots == 0
 
 
 async def test_verify_strips_whitespace_before_comparing(patch_python_runner) -> None:
@@ -93,11 +84,7 @@ async def test_verify_raises_on_timeout(patch_python_runner) -> None:
     """A loaded host must not turn a correct answer into a wrong one silently: the
     platform has a first-class SolutionTimeoutError and emits solution.timeout admin
     events for it, so the timeout is converted, not swallowed into False."""
-
-    async def _timeout(code, stdin="", *, timeout):
-        raise ExecTimeoutError("timed out")
-
-    patch_python_runner(runner, _timeout)
+    patch_python_runner(runner, _raises(ExecTimeoutError("timed out")))
     solution = RunnerSolution(
         test_cases=[{"input": "", "expected_output": "42"}], timeout=5
     )
@@ -148,21 +135,13 @@ def test_create_schema_bounds_test_case_payloads() -> None:
             RunnerSolutionCreate(question_id=uuid4(), test_cases=[case])
 
 
-async def test_all_cases_share_one_microvm(monkeypatch) -> None:
+async def test_all_cases_share_one_microvm(patch_python_runner) -> None:
     """Boot is ~1.1s and dominated a short case: 3 cases measured 3.07s booting one
     VM each vs 1.05s reusing one, so verify() opens the sandbox once per submission."""
-    boots = 0
-
-    @asynccontextmanager
-    async def _runner():
-        nonlocal boots
-        boots += 1
-        yield _echo_stdin
-
-    monkeypatch.setattr(runner, "python_runner", _runner)
+    stats = patch_python_runner(runner, _echo_stdin)
     solution = RunnerSolution(
         test_cases=[{"input": c, "expected_output": c} for c in "abc"], timeout=5
     )
     await assert_verifies(solution, [("any code", True)])
 
-    assert boots == 1
+    assert stats.boots == 1

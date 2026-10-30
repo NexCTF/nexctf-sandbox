@@ -9,63 +9,22 @@ import pytest
 
 from nexctf_sandbox import _sandbox
 
-
-class _FakeFs:
-    async def write(self, path: str, data: bytes) -> None:
-        pass
-
-
-class _FakeSandbox:
-    def __init__(self) -> None:
-        self.fs = _FakeFs()
-
-    async def shell(self, cmd, *, stdin=None, timeout=None):
-        return SimpleNamespace(exit_code=0, stdout_text="", stderr_text="")
-
-    async def destroy(self, *, force: bool = False, timeout=None) -> None:
-        pass
-
-
-@pytest.fixture
-def boot_kwargs(monkeypatch) -> dict:
-    """Swap Sandbox.create for a fake and capture the kwargs the VM was booted with."""
-    seen: dict = {}
-
-    async def _fake_create(name, **kwargs):
-        seen.update(kwargs)
-        return _FakeSandbox()
-
-    async def _fake_remove(name) -> None:
-        pass
-
-    monkeypatch.setattr(_sandbox.Sandbox, "create", _fake_create)
-    monkeypatch.setattr(_sandbox.Sandbox, "remove", _fake_remove)
-    return seen
-
-
-def _settings_returning(**values):
-    """Build a ``_settings`` stub returning the defaults with *values* overridden."""
-    merged = dict(_sandbox._DEFAULTS) | values
-
-    async def _fake() -> dict:
-        return merged
-
-    return _fake
+from .conftest import _settings_returning
 
 
 async def test_defaults_are_used_when_the_host_config_is_unreachable(
-    boot_kwargs,
+    fake_vm,
 ) -> None:
     """Outside the host app there is no Redis to read settings from — boot anyway."""
     await _sandbox.run_python("print('hi')", timeout=5)
 
     defaults = _sandbox._DEFAULTS
     memory = int(defaults["memory_mib"]) + int(defaults["root_disk_mib"])
-    assert boot_kwargs["cpus"] == defaults["cpus"]
-    assert boot_kwargs["memory"] == memory
+    assert fake_vm.boot_kwargs["cpus"] == defaults["cpus"]
+    assert fake_vm.boot_kwargs["memory"] == memory
 
 
-async def test_admin_settings_reach_the_vm(monkeypatch, boot_kwargs) -> None:
+async def test_admin_settings_reach_the_vm(monkeypatch, fake_vm) -> None:
     monkeypatch.setattr(
         _sandbox,
         "_settings",
@@ -74,12 +33,14 @@ async def test_admin_settings_reach_the_vm(monkeypatch, boot_kwargs) -> None:
 
     await _sandbox.run_python("print('hi')", timeout=5)
 
-    assert boot_kwargs["cpus"] == 4
-    assert boot_kwargs["memory"] == 512 + 128  # guest RAM plus the tmpfs root disk
+    assert fake_vm.boot_kwargs["cpus"] == 4
+    assert (
+        fake_vm.boot_kwargs["memory"] == 512 + 128
+    )  # guest RAM plus the tmpfs root disk
 
 
 async def test_root_disk_is_never_dropped_from_the_memory_budget(
-    monkeypatch, boot_kwargs
+    monkeypatch, fake_vm
 ) -> None:
     """Regression guard: ``memory=`` is guest RAM *plus* the RAM-backed root disk.
 
@@ -92,30 +53,30 @@ async def test_root_disk_is_never_dropped_from_the_memory_budget(
 
     await _sandbox.run_python("print('hi')", timeout=5)
 
-    assert boot_kwargs["memory"] == 256 + 512
+    assert fake_vm.boot_kwargs["memory"] == 256 + 512
 
 
-async def test_base_image_is_applied(monkeypatch, boot_kwargs) -> None:
+async def test_base_image_is_applied(monkeypatch, fake_vm) -> None:
     monkeypatch.setattr(
         _sandbox, "_settings", _settings_returning(base_image="python:3.13-slim")
     )
 
     await _sandbox.run_python("print('hi')", timeout=5)
 
-    assert "python:3.13-slim" in repr(boot_kwargs["image"])
+    assert "python:3.13-slim" in repr(fake_vm.boot_kwargs["image"])
 
 
-async def test_the_vm_has_no_egress_by_default(monkeypatch, boot_kwargs) -> None:
+async def test_the_vm_has_no_egress_by_default(monkeypatch, fake_vm) -> None:
     """Submitted code is untrusted, so the network is off until an admin opens it."""
     monkeypatch.setattr(_sandbox, "_settings", _settings_returning())
 
     await _sandbox.run_python("print('hi')", timeout=5)
 
-    assert boot_kwargs["network"] == _sandbox.Network.none()
+    assert fake_vm.boot_kwargs["network"] == _sandbox.Network.none()
 
 
 async def test_internet_access_reaches_the_public_internet_only(
-    monkeypatch, boot_kwargs
+    monkeypatch, fake_vm
 ) -> None:
     """'internet' must not hand submitted code the host's own network: Redis and
     the Postgres holding the flags sit on it. Only ``public`` (plus DNS) is
@@ -128,14 +89,14 @@ async def test_internet_access_reaches_the_public_internet_only(
 
     await _sandbox.run_python("print('hi')", timeout=5)
 
-    policy = boot_kwargs["network"]._to_dict()["custom_policy"]
+    policy = fake_vm.boot_kwargs["network"]._to_dict()["custom_policy"]
     assert policy["default_egress"] == "deny"  # 'all' would make this "allow"
     # The DNS rules are pinned to port 53 on the host; the rest is the real grant.
     granted = {r["destination"] for r in policy["rules"] if r.get("port") != "53"}
     assert granted == {"public"}
 
 
-async def test_all_access_is_unfiltered(monkeypatch, boot_kwargs) -> None:
+async def test_all_access_is_unfiltered(monkeypatch, fake_vm) -> None:
     """The escape hatch, for an admin who wants the guest on the host's network."""
     monkeypatch.setattr(
         _sandbox, "_settings", _settings_returning(network_access=_sandbox.NETWORK_ALL)
@@ -143,7 +104,7 @@ async def test_all_access_is_unfiltered(monkeypatch, boot_kwargs) -> None:
 
     await _sandbox.run_python("print('hi')", timeout=5)
 
-    assert boot_kwargs["network"] == _sandbox.Network.allow_all()
+    assert fake_vm.boot_kwargs["network"] == _sandbox.Network.allow_all()
 
 
 def test_every_choice_maps_to_a_policy() -> None:
@@ -258,9 +219,7 @@ def test_base_image_is_registered_as_a_plain_string() -> None:
     )
 
 
-async def test_every_access_setting_boots_with_its_policy(
-    monkeypatch, boot_kwargs
-) -> None:
+async def test_every_access_setting_boots_with_its_policy(monkeypatch, fake_vm) -> None:
     """microsandbox enforces the policy in its own userspace network stack, so no
     setting depends on a host capability — each one must boot, with its own policy.
     The plugin used to refuse 'disabled' and 'internet' without CAP_NET_ADMIN."""
@@ -271,4 +230,4 @@ async def test_every_access_setting_boots_with_its_policy(
 
         await _sandbox.run_python("print('hi')", timeout=5)
 
-        assert boot_kwargs["network"] == _sandbox._network(access)
+        assert fake_vm.boot_kwargs["network"] == _sandbox._network(access)
