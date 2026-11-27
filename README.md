@@ -20,7 +20,7 @@ A [NexCTF](https://github.com/NexCTF/NexCTF) plugin that checks answers by runni
 Add the plugin to NexCTF's `NEXCTF_PLUGINS` in its `.env`, along with the host's `kvm` group id; NexCTF installs the plugin from PyPI and applies its migrations on start:
 
 ```bash
-NEXCTF_PLUGINS=nexctf-sandbox==1.1.0
+NEXCTF_PLUGINS=nexctf-sandbox==1.2.0
 KVM_GID=993  # stat -c %g /dev/kvm
 ```
 
