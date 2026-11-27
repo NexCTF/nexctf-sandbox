@@ -12,7 +12,7 @@ A [NexCTF](https://github.com/NexCTF/NexCTF) plugin that checks answers by runni
 
 ## Requirements
 
-- NexCTF 0.12.5 or a later 0.12.x, see [Compatibility](#compatibility)
+- NexCTF 0.12.5 or later
 - A Linux host with KVM: the NexCTF process that checks submissions needs read and write access to `/dev/kvm`
 
 ## Quick Start

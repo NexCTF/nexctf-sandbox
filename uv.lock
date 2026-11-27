@@ -242,15 +242,6 @@ wheels = [
 ]
 
 [[package]]
-name = "async-lru"
-version = "2.3.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e8/1f/989ecfef8e64109a489fff357450cb73fa73a865a92bd8c272170a6922c2/async_lru-2.3.0.tar.gz", hash = "sha256:89bdb258a0140d7313cf8f4031d816a042202faa61d0ab310a0a538baa1c24b6", size = 16332, upload-time = "2026-03-19T01:04:32.413Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/e2/c2e3abf398f80732e58b03be77bde9022550d221dd8781bf586bd4d97cc1/async_lru-2.3.0-py3-none-any.whl", hash = "sha256:eea27b01841909316f2cc739807acea1c623df2be8c5cfad7583286397bb8315", size = 8403, upload-time = "2026-03-19T01:04:30.883Z" },
-]
-
-[[package]]
 name = "asyncpg"
 version = "0.32.0"
 source = { registry = "https://pypi.org/simple" }
@@ -585,18 +576,17 @@ standard-no-fastapi-cloud-cli = [
 
 [[package]]
 name = "fastapi-multiauth"
-version = "1.0.0"
+version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
-    { name = "async-lru" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "itsdangerous" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/86/e2/b8a83dffa43068e71a14f41e4e6ba3db24b90c699a7e9fde612b7e437045/fastapi_multiauth-1.0.0.tar.gz", hash = "sha256:fd15f7b1413abbd810fb0200a7b33973e74ef5990c8158ba18bc1725afa33160", size = 52851, upload-time = "2026-10-29T20:31:35.065Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/61/01/084c02a01efd64b4322146b03f8e03f17faa0898a0856d8a1cedc4256fc6/fastapi_multiauth-1.2.0.tar.gz", hash = "sha256:a98eb77b8e861d9f188dd1bea8e389b4a20f4106b09d82b8326bb6f483e447e5", size = 60324, upload-time = "2026-11-11T15:31:48.321Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/16/68/0a832e9099838edbd48a7a8f83eb2b5b2e07bda2650530243e12fda3237c/fastapi_multiauth-1.0.0-py3-none-any.whl", hash = "sha256:234b108b223407d5c0b659d0c7afe937d5f7287eda49976efa4a94059ca97297", size = 66995, upload-time = "2026-10-29T20:31:33.859Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/f9/fc1b2e3db4dcfb0e1e4c5b2a3030f3f8eabe7afea3617bc482d63734e217/fastapi_multiauth-1.2.0-py3-none-any.whl", hash = "sha256:c170231edaf1e5869c9c6510ac45e70aa0d05e964aa281f51816aa7ed0546254", size = 74661, upload-time = "2026-11-11T15:31:46.77Z" },
 ]
 
 [package.optional-dependencies]
@@ -955,8 +945,8 @@ wheels = [
 
 [[package]]
 name = "nexctf"
-version = "0.12.5"
-source = { git = "https://github.com/NexCTF/NexCTF.git?subdirectory=backend&rev=v0.12.5#7af84eebe5de3b3ad4ca5dbe9129f0c338cf95d1" }
+version = "0.13.0"
+source = { git = "https://github.com/NexCTF/NexCTF.git?subdirectory=backend&rev=v0.13.0#3d7e4645796d9b50b3649f615f7386233ef03c5a" }
 dependencies = [
     { name = "aioboto3" },
     { name = "aiosmtplib" },
@@ -999,12 +989,12 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "microsandbox", specifier = ">=0.7.11" },
-    { name = "nexctf", specifier = ">=0.12.5,<0.13" },
+    { name = "nexctf", specifier = ">=0.12.5,<1.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "nexctf", git = "https://github.com/NexCTF/NexCTF.git?subdirectory=backend&rev=v0.12.5" },
+    { name = "nexctf", git = "https://github.com/NexCTF/NexCTF.git?subdirectory=backend&rev=v0.13.0" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-asyncio", specifier = ">=1.4.0" },
     { name = "ruff", specifier = ">=0.17.0" },
@@ -1163,7 +1153,7 @@ wheels = [
 
 [[package]]
 name = "pgqueuer"
-version = "1.5.0"
+version = "2.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1174,15 +1164,16 @@ dependencies = [
     { name = "typer" },
     { name = "uvloop", marker = "sys_platform != 'win32'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/30/b1/906fc61b6e7889a0271b44456ebf77631e32158dd4940938d2ca97f01f57/pgqueuer-1.5.0.tar.gz", hash = "sha256:8c433007e2baf95eefd162fb2f398b3e43eda391e92018d794b914dcf6bdc25e", size = 603687, upload-time = "2026-10-04T20:17:23.483Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/13/69/74c6ecc3603856cedc5816b7f4350965dca0571ae8d12499c91026fcc60d/pgqueuer-2.2.0.tar.gz", hash = "sha256:4a9a9666043eb63caa773c2a789ad38454fcdba6b0b1d945ecb429fb98a11294", size = 653307, upload-time = "2026-11-27T09:35:31.975Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/78/32/410c7b7ebc948c9bc5cbca81a3996d77b6a00fd476725028c0a3494824b6/pgqueuer-1.5.0-py3-none-any.whl", hash = "sha256:57563a7e1cc1d3a2de970d212447708d5972e58363f0b907c469f9c102978672", size = 174262, upload-time = "2026-10-04T20:17:21.968Z" },
+    { url = "https://files.pythonhosted.org/packages/f8/0f/aef49df55f25fa5a9a808c7759675c70a418d57782c8c48dc78872b09e6e/pgqueuer-2.2.0-py3-none-any.whl", hash = "sha256:eb1d64035b146ba4bff8b26965790e2161cb80e90279ffc95d9531213d5d8047", size = 188780, upload-time = "2026-11-27T09:35:30.377Z" },
 ]
 
 [package.optional-dependencies]
 web = [
     { name = "fastapi" },
     { name = "jinja2" },
+    { name = "python-multipart" },
     { name = "uvicorn" },
 ]
 
